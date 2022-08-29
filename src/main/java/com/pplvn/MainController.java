@@ -13,6 +13,7 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 
@@ -72,7 +73,11 @@ public class MainController {
             e.printStackTrace();
         }
     }
-
+    
+    public SearchContext getShadowRootElement(JavascriptExecutor driver, WebElement element) {
+    	SearchContext ele = (SearchContext) driver.executeScript("return arguments[0].shadowRoot", element);
+    	return ele;
+    }
 
     private WebDriver getWebDriver(ConfigTool configTool) throws IOException {
         System.setProperty("webdriver.chrome.driver", "driver/chromedriver.exe");
@@ -242,12 +247,19 @@ public class MainController {
             // Open browser
             driver.get("https://sellercentral.amazon." + configTool.getUrl() + "/product-search/search?q=" + asin + "&ref_=xx_addlisting_dnav_xx");
 
+            log.debug("-------------------");
+            log.debug("-------------------");
             log.debug("Start Hijack " + asin);
+            log.debug("-------------------");
+            log.debug("-------------------");
+            
             TimeUnit.SECONDS.sleep(5);
             // click 'Show Variants'
             // get no exception
-            findElementNoExceptionWithWebDriver(driver, By.ByXPath.xpath("//body/div[@id='a-page']/div[@id='sc-content-container']/div[@id='product-search-container']" +
-                    "/div[1]/div[1]/div[2]/div[2]/div[1]/div[2]/div[1]/div[1]/kat-box[1]/div[1]/section[3]/div[1]/section[2]/div[1]")).click();
+            WebElement btn = (WebElement)findElementNoExceptionWithWebDriver(driver,
+            			By.ByXPath.xpath("//body/div[@id='a-page']/div[@id='sc-content-container']/div[@id='product-search-container']" +
+            					"/div[1]/div[1]/div[2]/div[2]/div[1]/div[2]/div[1]/div[1]/kat-box[1]/div[1]/section[3]/div[1]/section[2]/div[1]"));
+            btn.click();
 
             // Click Show more cho đến khi không còn show more nữa
             boolean showMore = true;
@@ -273,7 +285,8 @@ public class MainController {
                 WebElement katDropdown = findElementNoExceptionWithWebElement(variationRow, By.ByTagName.tagName("kat-dropdown"));
                 katDropdown.click();
                 // select 'new'
-                findElementNoExceptionWithWebElement(katDropdown, By.ByClassName.className("option-inner-container")).click();
+                SearchContext katOptionShadow = getShadowRootElement((JavascriptExecutor)driver, katDropdown);
+                katOptionShadow.findElement(By.cssSelector("div.option-inner-container")).click();
                 // get Button 'Sell this variation' của child
                 List<WebElement> sell_this_variation = driver.findElements(By.partialLinkText("Sell this variation"));
                 // lay Href
@@ -359,7 +372,7 @@ public class MainController {
 
     private void clickListAsin(ConfigTool configTool, WebDriver driver, String link) {
         try {
-            WebDriverWait wait = new WebDriverWait(driver, 10);
+            WebDriverWait wait = new WebDriverWait(driver, java.time.Duration.ofSeconds(10));
             driver.get(link);
             WebElement check = findElementNoExceptionWithWebDriver(driver, By.ById.id("advanced-view-switch"));
             if (check == null) {
@@ -367,18 +380,39 @@ public class MainController {
             }
             check.click();
             TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
+            
             findElementNoExceptionWithWebDriver(driver, By.ByTagName.tagName("kat-input")).sendKeys(configTool.getSKU());
             TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
-            findElementNoExceptionWithWebDriver(driver, By.ByXPath.xpath("//kat-input[@id='standard_price']")).sendKeys(configTool.getPrice());
+            
+            findElementNoExceptionWithWebDriver(driver, By.ByXPath.xpath("//kat-input[@id='purchasable_offer#1.our_price#1.schedule#1.value_with_tax']")).sendKeys(configTool.getPrice());
             TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
-            findElementNoExceptionWithWebDriver(driver, By.ByXPath.xpath("//*[@id=\"quantity\"]")).sendKeys(configTool.getQuantity());
+            
+            findElementNoExceptionWithWebDriver(driver, By.ByXPath.xpath("//*[@id=\"fulfillment_availability#1.quantity\"]")).sendKeys(configTool.getQuantity());
             TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
-            WebElement findDropDown = findElementNoExceptionWithWebDriver(driver, By.id("condition_type"));
-            log.debug("done condition");
-            setAttribute(driver, findDropDown, "value", "new, new");
+            
+            WebElement findDropDownRoot = findElementNoExceptionWithWebDriver(driver, By.ByTagName.tagName("kat-dropdown"));
+            findDropDownRoot.click();
+            SearchContext findDropDown = getShadowRootElement((JavascriptExecutor)driver, findDropDownRoot);
+            WebElement optionClicker = findDropDown.findElement(By.cssSelector("div.option-inner-container"));
+//            optionClicker.click();
+            WebElement oneOption = optionClicker.findElement(By.cssSelector("kat-option[value='new_new']"));
+            if (oneOption != null) {
+            	oneOption.click();
+            } else {
+            	throw new Exception("============================ Not selected New");
+            }
+            
             TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
-            findElementNoExceptionWithWebDriver(driver, By.ByXPath.xpath("//kat-input[@id='fulfillment_latency']")).sendKeys(configTool.getHandlingTime());
+            
+            findElementNoExceptionWithWebDriver(driver, By.ByXPath.xpath("//kat-input[@id='fulfillment_availability#1.lead_time_to_ship_max_days']")).sendKeys(configTool.getHandlingTime());
             TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
+            
+            WebElement katOptionRoot = findElementNoExceptionWithWebDriver(driver, By.cssSelector("kat-radiobutton#offerFulfillment-MFN"));
+            SearchContext katOption = getShadowRootElement((JavascriptExecutor)driver, katOptionRoot);
+            WebElement merchantMode = katOption.findElement(By.cssSelector("div.wrapper"));
+            merchantMode.click();
+            TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
+            
             findElementNoExceptionWithWebDriver(driver, By.ByXPath.xpath("//*[@id=\"EditSaveAction\"]")).click();
             TimeUnit.SECONDS.sleep(configTool.getTimeOutClose());
         } catch (Exception e) {
@@ -388,7 +422,7 @@ public class MainController {
 
     private void clickAsinEu(ConfigTool configTool, WebDriver driver, String link) {
         try {
-            WebDriverWait wait = new WebDriverWait(driver, 10);
+            WebDriverWait wait = new WebDriverWait(driver, java.time.Duration.ofSeconds(10));
             driver.get(link);
             WebElement check = findElementNoExceptionWithWebDriver(driver, By.ByXPath.xpath("//*[@id=\"advanced-view-switch\"]"));
             if (check == null) {
