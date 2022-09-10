@@ -253,7 +253,7 @@ public class MainController {
     private void startHiJack(ConfigTool configTool, WebDriver driver, String asin) throws InterruptedException {
         try {
             // Open browser
-            driver.get("https://sellercentral.amazon." + configTool.getUrl() + "/product-search/search?q=" + asin + "&ref_=xx_addlisting_dnav_xx");
+        	String linkURL = "https://sellercentral.amazon." + configTool.getUrl() + "/product-search/search?q=" + asin + "&ref_=xx_addlisting_dnav_xx";
 
             log.debug("-------------------");
             log.debug("-------------------");
@@ -261,12 +261,22 @@ public class MainController {
             log.debug("-------------------");
             log.debug("-------------------");
             
-            TimeUnit.SECONDS.sleep(5);
+            driver.get(linkURL);
+            TimeUnit.SECONDS.sleep(configTool.getTimeOutOpen());
             // click 'Show Variants'
             // get no exception
             WebElement btn = (WebElement)findElementNoExceptionWithWebDriver(driver,
             			By.ByXPath.xpath("//body/div[@id='a-page']/div[@id='sc-content-container']/div[@id='product-search-container']" +
             					"/div[1]/div[1]/div[2]/div[2]/div[1]/div[2]/div[1]/div[1]/kat-box[1]/div[1]/section[3]/div[1]/section[2]/div[1]"));
+            
+            if (btn == null) {
+            	driver.get(linkURL);
+                TimeUnit.SECONDS.sleep(configTool.getTimeOutOpen());
+                
+                btn = (WebElement)findElementNoExceptionWithWebDriver(driver,
+            			By.ByXPath.xpath("//body/div[@id='a-page']/div[@id='sc-content-container']/div[@id='product-search-container']" +
+            					"/div[1]/div[1]/div[2]/div[2]/div[1]/div[2]/div[1]/div[1]/kat-box[1]/div[1]/section[3]/div[1]/section[2]/div[1]"));
+            }
             btn.click();
 
             // Click Show more cho đến khi không còn show more nữa
@@ -330,7 +340,7 @@ public class MainController {
                         String randomString = randomString();
                         String SKU = asin + "-" + SlugUtils.makeSlug(randomString) + "-" + String.format("%03d", i++);
                         configTool.setSKU(SKU);
-                        log.debug("US");
+                        log.debug("US: SKU - " + SKU);
                         clickListAsin(configTool, driver, link);
 
                     }
@@ -378,7 +388,7 @@ public class MainController {
 
 // Start click link Asin con
 
-    private void clickListAsin(ConfigTool configTool, WebDriver driver, String link) {
+    private void clickListAsin(ConfigTool configTool, WebDriver driver, String link) throws InterruptedException {
         try {
             WebDriverWait wait = new WebDriverWait(driver, java.time.Duration.ofSeconds(10));
 
@@ -386,15 +396,19 @@ public class MainController {
             WebElement check = findElementNoExceptionWithWebDriver(driver, By.ById.id("advanced-view-switch"));
             if (check == null) {
                 driver.get(link);
+                check = findElementNoExceptionWithWebDriver(driver, By.ById.id("advanced-view-switch"));
             }
-            check.click();
+            if (check != null) check.click();
             TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
             
             findElementNoExceptionWithWebDriver(driver, By.ByTagName.tagName("kat-input")).sendKeys(configTool.getSKU());
             TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
             
-            findElementNoExceptionWithWebDriver(driver, By.ByXPath.xpath("//kat-input[@id='fulfillment_availability#1.lead_time_to_ship_max_days']")).sendKeys(configTool.getHandlingTime());
-            TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
+            WebElement handleTimeInput = findElementNoExceptionWithWebDriver(driver, By.ByXPath.xpath("//kat-input[@id='fulfillment_availability#1.lead_time_to_ship_max_days']"));
+            if (handleTimeInput != null) {
+            	handleTimeInput.sendKeys(configTool.getHandlingTime());
+            	TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
+            }
             
             findElementNoExceptionWithWebDriver(driver, By.ByXPath.xpath("//*[@id=\"fulfillment_availability#1.quantity\"]")).sendKeys(configTool.getQuantity());
             TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
@@ -433,6 +447,7 @@ public class MainController {
             TimeUnit.SECONDS.sleep(configTool.getTimeOutClose());
         } catch (Exception e) {
             log.error("Skipp Error ", e);
+            TimeUnit.SECONDS.sleep(configTool.getTimeOutClose());
         }
     }
 
