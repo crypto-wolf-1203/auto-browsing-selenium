@@ -401,6 +401,17 @@ public class MainController {
             if (check != null) check.click();
             TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
             
+            WebElement allAttributesOptionRoot = findElementNoExceptionWithWebDriver(driver, By.cssSelector("kat-radiobutton[value='ALL_ATTRIBUTES_VIEW_MODE']"));
+            if (allAttributesOptionRoot != null) {
+	            scrollToElement(driver, allAttributesOptionRoot);
+	            allAttributesOptionRoot.click();
+	            SearchContext katOption = getShadowRootElement((JavascriptExecutor)driver, allAttributesOptionRoot);
+	            WebElement allAttrMode = katOption.findElement(By.cssSelector("div.wrapper"));
+	            scrollToElement(driver, allAttrMode);
+	            allAttrMode.click();
+	            TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
+            }
+            
             findElementNoExceptionWithWebDriver(driver, By.ByTagName.tagName("kat-input")).sendKeys(configTool.getSKU());
             TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
             
