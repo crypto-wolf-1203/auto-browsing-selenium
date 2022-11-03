@@ -263,6 +263,14 @@ public class MainController {
             
             driver.get(linkURL);
             TimeUnit.SECONDS.sleep(configTool.getTimeOutOpen());
+            
+            WebElement asinInput = findElementNoExceptionWithWebDriver(driver, By.cssSelector("kat-input[unique-id='katal-id-0']"));
+            if (asinInput != null) {
+            	asinInput.sendKeys(asin);
+            	asinInput.sendKeys(Keys.ENTER);
+            	TimeUnit.SECONDS.sleep(configTool.getTimeOutClick());
+            }
+            
             // click 'Show Variants'
             // get no exception
             WebElement btn = (WebElement)findElementNoExceptionWithWebDriver(driver,
